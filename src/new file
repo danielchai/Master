@@ -1,0 +1,12 @@
+PyObject *lst = PyList_New(array_len);
+if (!lst)
+    return NULL;
+for (i = 0; i < array_len; i++) {
+    PyObject *num = PyFloat_FromDouble(array[i]);
+    if (!num) {
+        Py_DECREF(lst);
+        return NULL;
+    }
+    PyList_SET_ITEM(lst, i, num);   // reference to num stolen
+}
+return lst;

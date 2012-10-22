@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <modbus.h>
+extern void enable(int command);
+
+
+
+double sdl()
+{
+	modbus_t *sdl;
+	uint16_t tab_reg[4];	
+	tab_reg[0] = 0x00;
+	enable(1);
+	sdl = modbus_new_tcp("169.254.114.25",502);
+
+	struct timeval old_response_timeout;
+	struct timeval response_timeout;
+
+	/* Save original timeout */
+	modbus_get_response_timeout(sdl, &old_response_timeout);
+
+	/* Define a new and too short timeout! */
+	response_timeout.tv_sec = 5;
+	response_timeout.tv_usec = 0;
+	modbus_set_response_timeout(sdl, &response_timeout);
+
+    modbus_set_debug(sdl, TRUE);
+	modbus_set_error_recovery(sdl,
+                              MODBUS_ERROR_RECOVERY_LINK |
+                              MODBUS_ERROR_RECOVERY_PROTOCOL);
+	
+	modbus_set_slave(sdl,1);
+
+	if (modbus_connect(sdl) == -1) {
+    fprintf(stderr, "Connection failed: %s\n", modbus_strerror(errno));
+    modbus_free(sdl);
+    return -100000;
+	}
+	
+	int rc =  modbus_read_input_registers(sdl, 0, 1, tab_reg);
+	if(rc != 1)printf("error\n");
+	//printf("%d\n",tab_reg[0]);
+	int volcode,voldig,volten,volhund;
+	volcode = tab_reg[0];
+	voldig = volcode/100;
+	volten = volcode/10-voldig*10;
+	volhund = volcode-(volcode/10)*10;
+	char s[5]="";
+	sprintf(s,"%d.%d%d",voldig,volten,volhund);
+	double voltage =atof(s);
+  	modbus_close(sdl);
+  	modbus_free(sdl);
+	return voltage;
+
+
+    return 0;
+}
